@@ -1,5 +1,4 @@
-UNDER DEVELOPMENT
-Pretix SumUp Payment
+UNDER DEVELOPMENT - Pretix SumUp Payment
 ==========================
 
 This is a plugin for `pretix`_. 
