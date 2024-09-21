@@ -1,9 +1,10 @@
+#UNDER DEVELOPMENT
 Pretix SumUp Payment
 ==========================
 
 This is a plugin for `pretix`_. 
 
-Enables credit card payments via SumUp
+Enables Credit card, iDEAL, Apple Pay and Google Pay payments via SumUp
 
 Development setup
 -----------------
