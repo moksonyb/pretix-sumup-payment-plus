@@ -13,10 +13,5 @@ event_patterns = [
         payment_widget,
         name="payment_widget",
     ),
-    re_path(
-        r"^order/(?P<order>[^/]+)/(?P<secret>[A-Za-z0-9]+)/sumup/payment_widget/(?P<payment>[^/]+)/ideal_checkout$",
-        ideal_checkout,
-        name="ideal_checkout",
-    ),
     
 ]
