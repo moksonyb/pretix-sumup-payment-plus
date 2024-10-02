@@ -1,1 +1,566 @@
-<iframe src="{{ iframe_url }}" width="100%" height="630" frameBorder=0></iframe>
+{% load i18n %}
+{% load static %}
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style nonce="{{ csp_nonce }}">
+        html,
+        body {
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background-color: #f5f7fa;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .payment-widget {
+            width: 50vw;
+            padding: 20px;
+            background-color: white;
+            border-radius: 20px;
+            /*box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);*/
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        @media only screen and (max-device-width: 768px) {
+            .payment-widget {
+                width: 90vw !important;
+            }
+        }
+
+        .payment-button {
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 10px 0 10px 0;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-size: 3vh;
+            font-weight: 550;
+            text-align: center;
+        }
+
+        .card {
+            background-color: #0f131a;
+            color: white;
+        }
+
+        .ideal {
+            background-color: #d01473;
+            color: white;
+        }
+
+        .card:hover {
+            background-color: black;
+        }
+
+        .ideal:hover {
+            background-color: #c0146a;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .title {
+            font-size: 18px;
+            color: #222222;
+            margin-bottom: 20px;
+            /* Additional spacing */
+        }
+
+        .sumuplogo {
+            margin-bottom: 5vh;
+            height: 6vh;
+            align-self: start;
+        }
+
+        .icon {
+            position: relative;
+            height: 4vh;
+            margin-left: 10px;
+        }
+
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #0f131a;
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+            margin-bottom: 3vh;
+        }
+
+        .loader-card {
+            width: 50vw;
+            padding: 40px;
+            background-color: white;
+            border-radius: 20px;
+            /*box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);*/
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+
+        }
+
+        @keyframes rotation {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @supports (-webkit-appearance: -apple-pay-button) {
+
+            /* Safari 11.1+ */
+            .apple-pay {
+                display: inline-block;
+                -webkit-appearance: -apple-pay-button;
+                -apple-pay-button-type: check-out;
+                -apple-pay-button-style: black;
+                width: 100%;
+                padding: 6px 0 6px 0;
+                border-radius: 10px;
+                cursor: pointer;
+            }
+        }
+
+        .google-pay {
+            display: inline-block;
+            width: 100%;
+            margin-bottom: 10px;
+
+        }
+    </style>
+</head>
+{% if reload %}
+<script type="text/javascript" nonce="{{ csp_nonce }}">
+    const url = new URL(window.top.location.href);
+    url.searchParams.set('paid', 'yes');
+    window.top.location.href = url.href;
+</script>
+
+<body>
+    <div class="title">{% trans "Processing Payment" %}</div>
+    {% else %}
+
+    <body>
+        <div class="title">
+            {% if retry %}
+            {% trans "Last try rejected. Please check your entry and retry afterwards." %}
+            {% endif %}
+        </div>
+        <div class="hidden" id="payment-widget">
+            <svg viewBox="0 0 214 63" xmlns="http://www.w3.org/2000/svg" fill="#0f131a" class="sumuplogo">
+                <g fill-rule="evenodd">
+                    <path
+                        d="M58.2.5H5.1C2.7.5.7 2.5.7 4.9v52.8c0 2.4 2 4.4 4.4 4.4h53.1c2.4 0 4.4-2 4.4-4.4V4.9c0-2.5-2-4.4-4.4-4.4zM39.5 46.8c-5.4 5.4-14 5.6-19.7.7l-.1-.1c-.3-.3-.4-.9 0-1.3L38.9 27c.4-.3.9-.3 1.3 0 5 5.8 4.8 14.4-.7 19.8zm4-30.5L24.3 35.4c-.4.3-.9.3-1.3 0-5-5.7-4.8-14.3.6-19.7 5.4-5.4 14-5.6 19.7-.7 0 0 .1 0 .1.1.5.3.5.9.1 1.2z"
+                        fill-rule="nonzero"></path>
+                    <path
+                        d="M144.5 17.6h-.1c-2.4 0-4.5 1-6 2.5-1.5-1.5-3.7-2.5-6-2.5h-.1c-4.6 0-8.4 3.7-8.4 8.4v16.3c.1 1.3 1.1 2.3 2.4 2.3 1.3 0 2.3-1 2.4-2.3V26c0-2 1.6-3.6 3.6-3.6h.1c2 0 3.5 1.5 3.6 3.5v16.4c.121 1.182.953 2.3 2.3 2.3 1.3 0 2.3-1 2.4-2.3V25.8c.1-1.9 1.7-3.5 3.6-3.5h.1c2 0 3.6 1.6 3.6 3.6v16.4c.1 1.3 1.1 2.3 2.4 2.3 1.3 0 2.3-1 2.4-2.3V26c.1-4.6-3.7-8.4-8.3-8.4zm-28.4 0c-1.3 0-2.3 1-2.4 2.3v16.3c0 2-1.6 3.6-3.7 3.6h-.1c-2 0-3.7-1.6-3.7-3.6V19.8c-.1-1.3-1.1-2.3-2.4-2.3-1.3 0-2.3 1-2.4 2.3v16.3c0 4.6 3.8 8.4 8.5 8.4h.1c4.7 0 8.5-3.8 8.5-8.4V19.9c0-1.3-1.1-2.3-2.4-2.3zm56.8 0c-1.3 0-2.3 1-2.4 2.3v16.3c0 2-1.6 3.6-3.7 3.6h-.1c-2 0-3.7-1.6-3.7-3.6V19.8c-.1-1.3-1.1-2.3-2.4-2.3-1.3 0-2.3 1-2.4 2.3v16.3c0 4.6 3.8 8.4 8.5 8.4h.1c4.7 0 8.5-3.8 8.5-8.4V19.9c-.1-1.3-1.1-2.3-2.4-2.3z">
+                    </path>
+                    <path
+                        d="M188.8 17.6h-.1c-4.8 0-8.6 3.8-8.6 8.5v29.6c0 1.3 1.1 2.4 2.4 2.4 1.3 0 2.4-1.1 2.4-2.4V43.4c.9.8 2.4 1.2 3.8 1.2h.1c4.8 0 8.4-4.1 8.4-8.8v-9.9c0-4.7-3.6-8.3-8.4-8.3zm3.8 18.4c0 2.6-1.7 3.7-3.7 3.7h-.1c-2.1 0-3.7-1.1-3.7-3.7v-9.9c0-2 1.7-3.7 3.7-3.7h.1c2.1 0 3.7 1.6 3.7 3.7V36z"
+                        fill-rule="nonzero"></path>
+                    <path
+                        d="M89.6 28.3c-2.7-1.1-4.4-1.8-4.4-3.4 0-1.3 1-2.5 3.3-2.5 1.4 0 2.6.6 3.5 1.8.6.7 1.2 1.1 1.9 1.1 1.4 0 2.5-1.1 2.5-2.4 0-.5-.1-1-.4-1.3-1.5-2.3-4.6-3.9-7.5-3.9-4 0-8.1 2.5-8.1 7.3 0 4.9 4 6.5 7.3 7.7 2.6 1 4.9 1.9 4.9 4 0 1.6-1.5 3.2-4.3 3.2-.9 0-2.5-.2-3.6-1.5-.6-.7-1.3-1-1.9-1-1.3 0-2.5 1.1-2.5 2.4 0 .5.2 1 .5 1.4 1.5 2.3 4.9 3.4 7.5 3.4 4.4 0 9.2-2.8 9.2-7.9-.1-5.4-4.4-7.1-7.9-8.4z">
+                    </path>
+                    <g fill-rule="nonzero">
+                        <path
+                            d="M208.4 17.6c-2.6 0-4.8 2.1-4.8 4.8 0 2.6 2.1 4.8 4.8 4.8 2.6 0 4.8-2.1 4.8-4.8 0-2.6-2.1-4.8-4.8-4.8zm0 8.4c-2 0-3.6-1.6-3.6-3.6s1.6-3.6 3.6-3.6 3.6 1.6 3.6 3.6-1.6 3.6-3.6 3.6z">
+                        </path>
+                        <path
+                            d="M208.9 22.6c.6-.1 1-.6 1-1.2 0-.8-.6-1.3-1.5-1.3h-1.2c-.3 0-.5.2-.5.5v3.3c0 .3.2.5.5.5s.5-.2.5-.5v-1.2l1.2 1.5c.1.2.2.2.5.2.4 0 .5-.3.5-.5s-.1-.3-.2-.4l-.8-.9zm-.4-.7h-.6v-1h.6c.3 0 .5.2.5.5 0 .2-.2.5-.5.5z">
+                        </path>
+                    </g>
+                </g>
+            </svg></a>
+            <div class="payment-button card" id="credit-debit">
+                Pay with card
+
+            </div>
+            <div class="payment-button ideal" id="ideal">
+                Pay with <img src="{% static 'pretix_sumup/ideal-icon.png' %}" class="icon" alt="iDEAL">
+            </div>
+
+            <!-- Future APMs
+            <div class="google-pay" id="google-pay"></div>
+
+            <div class="apple-pay" lang=en id="apple-pay">
+            -->
+            </div>
+        </div>
+
+        </div>
+
+        <div id="loader-card" class="hidden">
+            <div class="loader-card">
+                <span class="loader"></span>
+                Redirecting to iDEAL payment page...
+            </div>
+        </div>
+
+
+        <div id="sumup-card"></div>
+    </body>
+
+    <script type="text/javascript" src="https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js?ver=2.6.2"></script>
+
+
+
+    <script type="text/javascript" nonce="{{ csp_nonce }}">
+
+            console.log('Credit/Debit Card selected');
+            // Directly hide the widget when Credit/Debit Card is clicked
+            document.getElementById('payment-widget').classList.add('hidden');
+            document.getElementById('sumup-card').style.display = 'block';
+            // Mount the SumUp card widget after selecting Credit/Debit Card
+            SumUpCard.mount({
+                id: 'sumup-card',
+                locale: '{{ locale }}',
+                checkoutId: '{{ checkout_id }}',
+                nonce: '{{ csp_nonce }}',
+                email: '{{ email }}',
+                onResponse: function (type, body) {
+                    console.log(type, body);
+                    const titleEl = document.querySelector('.title');
+                    if (type === 'sent') {
+                        titleEl.innerHTML = '{% trans "Processing Payment" %}';
+                    } else if (type === 'success') {
+                        if (body.status === "FAILED") {
+                            titleEl.innerHTML = '{% trans "Last try rejected. Please check your entry and retry afterwards." %}';
+                        } else if (body.status === "PAID") {
+                            document.getElementById("sumup-card").innerHTML =
+                                '<div class="title">{% trans "Payment successful" %}</div><div class="loader"></div>';
+                            window.location.reload();
+                        } else {
+                            window.location.reload();
+                        }
+                    } else if (type === 'invalid') {
+                        titleEl.innerHTML = '{% trans "Invalid card data. Please check your entry and retry afterwards." %}';
+                    }
+                },
+            });
+
+
+        // iDEAL payment
+
+        // Wait until the DOM content is fully loaded
+        document.addEventListener('DOMContentLoaded', function () {
+            // Get the button element by its ID
+            const idealButton = document.getElementById('ideal');
+
+            // Add a click event listener to the button
+            idealButton.addEventListener('click', function () {
+
+                document.getElementById('payment-widget').classList.add('hidden');
+                document.getElementById('loader-card').classList.remove('hidden');
+                // Perform a fetch request to the Django view
+                const controller = new AbortController();
+                const signal = controller.signal;
+
+                // Set a longer timeout for the request (e.g., 60 seconds)
+                const timeout = setTimeout(() => {
+                    controller.abort();  // Abort the fetch request if it takes too long
+                    console.error("Request timed out after 60 seconds");
+                    alert("The request is taking too long. Please try again.");
+                }, 60000);
+
+                fetch(window.location.href + '/ideal_checkout', {
+                    method: 'GET',
+                    signal: signal,  // Pass the abort signal
+                })
+                    .then(response => {
+                        clearTimeout(timeout);  // Clear the timeout if the request completes in time
+                        if (!response.ok) {
+                            throw new Error(`Network response was not ok. Status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        const redirectUrl = data.redirect_url;
+                        window.top.location.href = redirectUrl;
+                    })
+                    .catch(error => {
+                        if (error.name === 'AbortError') {
+                            console.log('Request was aborted.');
+                        } else {
+                            console.error('There was an error:', error);
+                            alert('Failed to initiate payment. Please try again.' + error);
+                        }
+                    });
+
+            });
+        });
+
+        document.getElementById('apple-pay').addEventListener('click', function () {
+            console.log('Apple Pay selected');
+        });
+
+    </script>
+
+<!-- Google Pay - TODO
+    <script type="text/javascript" nonce="{{ csp_nonce }}">
+        /**
+         * Define the version of the Google Pay API referenced when creating your
+         * configuration
+         *
+         * @see {@link https://developers.google.com/pay/api/web/reference/request-objects#PaymentDataRequest|apiVersion in PaymentDataRequest}
+         */
+        const baseRequest = {
+            apiVersion: 2,
+            apiVersionMinor: 0
+        };
+
+        /**
+         * Card networks supported by your site and your gateway
+         *
+         * @see {@link https://developers.google.com/pay/api/web/reference/request-objects#CardParameters|CardParameters}
+         * @todo confirm card networks supported by your site and gateway
+         */
+        const allowedCardNetworks = ["AMEX", "DISCOVER", "INTERAC", "JCB", "MASTERCARD", "VISA"];
+
+        /**
+         * Card authentication methods supported by your site and your gateway
+         *
+         * @see {@link https://developers.google.com/pay/api/web/reference/request-objects#CardParameters|CardParameters}
+         * @todo confirm your processor supports Android device tokens for your
+         * supported card networks
+         */
+        const allowedCardAuthMethods = ["PAN_ONLY", "CRYPTOGRAM_3DS"];
+
+        /**
+         * Identify your gateway and your site's gateway merchant identifier
+         *
+         * The Google Pay API response will return an encrypted payment method capable
+         * of being charged by a supported gateway after payer authorization
+         *
+         * @todo check with your gateway on the parameters to pass
+         * @see {@link https://developers.google.com/pay/api/web/reference/request-objects#gateway|PaymentMethodTokenizationSpecification}
+         */
+        const tokenizationSpecification = {
+            type: 'PAYMENT_GATEWAY',
+            parameters: {
+                'gateway': 'example',
+                'gatewayMerchantId': 'exampleGatewayMerchantId'
+            }
+        };
+
+        /**
+         * Describe your site's support for the CARD payment method and its required
+         * fields
+         *
+         * @see {@link https://developers.google.com/pay/api/web/reference/request-objects#CardParameters|CardParameters}
+         */
+        const baseCardPaymentMethod = {
+            type: 'CARD',
+            parameters: {
+                allowedAuthMethods: allowedCardAuthMethods,
+                allowedCardNetworks: allowedCardNetworks
+            }
+        };
+
+        /**
+         * Describe your site's support for the CARD payment method including optional
+         * fields
+         *
+         * @see {@link https://developers.google.com/pay/api/web/reference/request-objects#CardParameters|CardParameters}
+         */
+        const cardPaymentMethod = Object.assign(
+            {},
+            baseCardPaymentMethod,
+            {
+                tokenizationSpecification: tokenizationSpecification
+            }
+        );
+
+        /**
+         * An initialized google.payments.api.PaymentsClient object or null if not yet set
+         *
+         * @see {@link getGooglePaymentsClient}
+         */
+        let paymentsClient = null;
+
+        /**
+         * Configure your site's support for payment methods supported by the Google Pay
+         * API.
+         *
+         * Each member of allowedPaymentMethods should contain only the required fields,
+         * allowing reuse of this base request when determining a viewer's ability
+         * to pay and later requesting a supported payment method
+         *
+         * @returns {object} Google Pay API version, payment methods supported by the site
+         */
+        function getGoogleIsReadyToPayRequest() {
+            return Object.assign(
+                {},
+                baseRequest,
+                {
+                    allowedPaymentMethods: [baseCardPaymentMethod]
+                }
+            );
+        }
+
+        /**
+         * Configure support for the Google Pay API
+         *
+         * @see {@link https://developers.google.com/pay/api/web/reference/request-objects#PaymentDataRequest|PaymentDataRequest}
+         * @returns {object} PaymentDataRequest fields
+         */
+        function getGooglePaymentDataRequest() {
+            const paymentDataRequest = Object.assign({}, baseRequest);
+            paymentDataRequest.allowedPaymentMethods = [cardPaymentMethod];
+            paymentDataRequest.transactionInfo = getGoogleTransactionInfo();
+            paymentDataRequest.merchantInfo = {
+                // @todo a merchant ID is available for a production environment after approval by Google
+                // See {@link https://developers.google.com/pay/api/web/guides/test-and-deploy/integration-checklist|Integration checklist}
+                // merchantId: '12345678901234567890',
+                merchantName: 'Example Merchant'
+            };
+            return paymentDataRequest;
+        }
+
+        /**
+         * Return an active PaymentsClient or initialize
+         *
+         * @see {@link https://developers.google.com/pay/api/web/reference/client#PaymentsClient|PaymentsClient constructor}
+         * @returns {google.payments.api.PaymentsClient} Google Pay API client
+         */
+        function getGooglePaymentsClient() {
+            if (paymentsClient === null) {
+                paymentsClient = new google.payments.api.PaymentsClient({ environment: 'TEST' });
+            }
+            return paymentsClient;
+        }
+
+        /**
+         * Initialize Google PaymentsClient after Google-hosted JavaScript has loaded
+         *
+         * Display a Google Pay payment button after confirmation of the viewer's
+         * ability to pay.
+         */
+        function onGooglePayLoaded() {
+            const paymentsClient = getGooglePaymentsClient();
+            paymentsClient.isReadyToPay(getGoogleIsReadyToPayRequest())
+                .then(function (response) {
+                    if (response.result) {
+                        addGooglePayButton();
+                        // @todo prefetch payment data to improve performance after confirming site functionality
+                        // prefetchGooglePaymentData();
+                    }
+                })
+                .catch(function (err) {
+                    // show error in developer console for debugging
+                    console.error(err);
+                });
+        }
+
+        /**
+         * Add a Google Pay purchase button alongside an existing checkout button
+         *
+         * @see {@link https://developers.google.com/pay/api/web/reference/request-objects#ButtonOptions|Button options}
+         * @see {@link https://developers.google.com/pay/api/web/guides/brand-guidelines|Google Pay brand guidelines}
+         */
+        function addGooglePayButton() {
+            const paymentsClient = getGooglePaymentsClient();
+            const button =
+                paymentsClient.createButton({
+                    buttonColor: 'white',
+                    buttonType: 'checkout',
+                    buttonRadius: 10,
+                    buttonSizeMode: 'fill',
+                    onClick: onGooglePaymentButtonClicked,
+                    allowedPaymentMethods: [baseCardPaymentMethod]
+                });
+            document.getElementById('google-pay').appendChild(button);
+        }
+
+        /**
+         * Provide Google Pay API with a payment amount, currency, and amount status
+         *
+         * @see {@link https://developers.google.com/pay/api/web/reference/request-objects#TransactionInfo|TransactionInfo}
+         * @returns {object} transaction info, suitable for use as transactionInfo property of PaymentDataRequest
+         */
+        function getGoogleTransactionInfo() {
+            return {
+                countryCode: '{{ locale }}',
+                currencyCode: '{{ currency }}',
+                totalPriceStatus: 'FINAL',
+                totalPrice: '{{ amount }}'
+            };
+        }
+
+        /**
+         * Prefetch payment data to improve performance
+         *
+         * @see {@link https://developers.google.com/pay/api/web/reference/client#prefetchPaymentData|prefetchPaymentData()}
+         */
+        function prefetchGooglePaymentData() {
+            const paymentDataRequest = getGooglePaymentDataRequest();
+            // transactionInfo must be set but does not affect cache
+            paymentDataRequest.transactionInfo = {
+                totalPriceStatus: 'NOT_CURRENTLY_KNOWN',
+                currencyCode: '{{ currency }}'
+            };
+            const paymentsClient = getGooglePaymentsClient();
+            paymentsClient.prefetchPaymentData(paymentDataRequest);
+        }
+
+        /**
+         * Show Google Pay payment sheet when Google Pay payment button is clicked
+         */
+        function onGooglePaymentButtonClicked() {
+            const paymentDataRequest = getGooglePaymentDataRequest();
+            paymentDataRequest.transactionInfo = getGoogleTransactionInfo();
+
+            const paymentsClient = getGooglePaymentsClient();
+            paymentsClient.loadPaymentData(paymentDataRequest)
+                .then(function (paymentData) {
+                    // handle the response
+                    processPayment(paymentData);
+                })
+                .catch(function (err) {
+                    // show error in developer console for debugging
+                    console.error(err);
+                });
+        }
+        /**
+         * Process payment data returned by the Google Pay API
+         *
+         * @param {object} paymentData response from Google Pay API after user approves payment
+         * @see {@link https://developers.google.com/pay/api/web/reference/response-objects#PaymentData|PaymentData object reference}
+         */
+        function processPayment(paymentData) {
+            // show returned data in developer console for debugging
+            console.log(paymentData);
+            // @todo pass payment token to your gateway to process payment
+            // @note DO NOT save the payment credentials for future transactions,
+            // unless they're used for merchant-initiated transactions with user
+            // consent in place.
+            paymentToken = paymentData.paymentMethodData.tokenizationData.token;
+        }</script>
+    <script async src="https://pay.google.com/gp/p/js/pay.js" onload="onGooglePayLoaded()"></script>
+
+     -->
+
+    {% endif %}
+
+</html>

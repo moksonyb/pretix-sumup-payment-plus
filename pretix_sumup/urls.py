@@ -1,6 +1,6 @@
 from django.urls import re_path
 
-from pretix_sumup.views import checkout_event, payment_widget
+from pretix_sumup.views import checkout_event, payment_widget, ideal_checkout
 
 event_patterns = [
     re_path(
@@ -13,4 +13,10 @@ event_patterns = [
         payment_widget,
         name="payment_widget",
     ),
+    re_path(
+        r"^order/(?P<order>[^/]+)/(?P<secret>[A-Za-z0-9]+)/sumup/payment_widget/(?P<payment>[^/]+)/ideal_checkout$",
+        ideal_checkout,
+        name="ideal_checkout",
+    ),
+    
 ]

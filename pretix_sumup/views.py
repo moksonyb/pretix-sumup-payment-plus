@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.utils.crypto import get_random_string
@@ -39,21 +40,44 @@ def payment_widget(request, *args, **kwargs):
         raise ValidationError(_("No SumUp checkout ID found."))
 
     csp_nonce = get_random_string(10)
+    
     csp = {
-        "default-src": ["*.sumup.com"],
-        "script-src": [f"'nonce-{csp_nonce}'", "*.sumup.com"],
+        "default-src": ["'self'", "*.sumup.com", "*.google.com"],
+        "script-src": [
+            f"'nonce-{csp_nonce}'", 
+            "'self'", 
+            "*.sumup.com", 
+            "*.google.com",
+            "'unsafe-inline'",  # Allow inline scripts
+        ],
         "style-src": [
-            f"'nonce-{csp_nonce}'",
+            "'self'",
+            f"'nonce-{csp_nonce}'", 
+            "'unsafe-inline'",  # Allow inline styles
+            "*.sumup.com", 
+            "*.google.com",
+            "fonts.googleapis.com",  # Allow Google Fonts stylesheets
+        ],
+        "img-src": [
+            "'self'",
+            "*.google.com",
             "*.sumup.com",
-            "'unsafe-inline'",  # workaround as sumup don't pass the nonce to the lazy loaded input fields
+            "*.gstatic.com",  # Google's image CDN
+            "data:",  # Allow inline images
+        ],
+        "font-src": [
+            "'self'", 
+            "fonts.gstatic.com",  # Allow Google Fonts
         ],
         "frame-src": [
-            "*"  # sumup may due to 3DS verification load a site from the bank of the customer
+            "*.sumup.com", 
+            "*.google.com", 
+            "*"
         ],
-        "img-src": ["*.sumup.com"],
-        "connect-src": ["*.sumup.com"],
+        "connect-src": ["'self'", "*.sumup.com", "*.google.com"],
         "frame-ancestors": ["'self'"],
     }
+    
     csp_header = {"Content-Security-Policy": _render_csp(csp)}
     if (
         order_payment.state == OrderPayment.PAYMENT_STATE_PENDING
@@ -61,9 +85,12 @@ def payment_widget(request, *args, **kwargs):
     ):
         context = {
             "checkout_id": checkout_id,
+            "payment": order_payment.id,
             "email": order_payment.order.email,
             "retry": order_payment.state == OrderPayment.PAYMENT_STATE_FAILED,
             "locale": _get_sumup_locale(request),
+            "amount": order_payment.amount,  #CHECK IF WORKS
+            "currency": order_payment.order.event.currency, #CHECK IF WORKS
             "csp_nonce": csp_nonce,
         }
     elif order_payment.state == OrderPayment.PAYMENT_STATE_CONFIRMED:
@@ -78,6 +105,16 @@ def payment_widget(request, *args, **kwargs):
         request=request,
         headers=csp_header,
     )
+
+def ideal_checkout(request, *args, **kwargs):
+    provider = SumUp(request.event)
+    order_payment = get_object_or_404(
+        OrderPayment, pk=kwargs.get("payment"), order__event=request.event
+    )
+
+    redirect_url = provider.execute_ideal_payment(order_payment)
+    return JsonResponse({'redirect_url': redirect_url})
+
 
 
 def _get_sumup_locale(request):

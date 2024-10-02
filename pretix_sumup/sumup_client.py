@@ -1,9 +1,11 @@
 import requests
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
+import logging
 
 SUMUP_BASE_URL = "https://api.sumup.com/v0.1"
 
+logger = logging.getLogger("pretix.plugins.sumup")
 
 def _auth_header(access_token):
     return {"Authorization": "Bearer " + access_token}
@@ -58,8 +60,21 @@ def create_checkout(
     description,
     merchant_code,
     return_url,
+    redirect_url,
     access_token,
+    first_name = "",
+    last_name = "",
+    email = "",
+    country = "",
+    city = "",
+    line1 = "",
+    line2 = "",
+    postal_code = "",
+    state = "",
 ):
+    logger.info("Creating SumUp checkout")
+    logger.info(first_name)
+
     response = requests.post(
         f"{SUMUP_BASE_URL}/checkouts",
         json={
@@ -69,6 +84,20 @@ def create_checkout(
             "currency": currency,
             "merchant_code": merchant_code,
             "return_url": return_url,
+            "redirect_url": redirect_url,
+            "personal_details": {
+                "address": {
+                    "city": city,
+                    "country": country,
+                    "line1": line1,
+                    "line2": line2,
+                    "postal_code": postal_code,
+                    "state": state,
+                    },
+                "email": email,
+                "first_name": first_name,
+                "last_name": last_name,
+                },
         },
         headers=_auth_header(access_token),
     )
@@ -77,6 +106,15 @@ def create_checkout(
     response_body = response.json()
     return response_body["id"]
 
+def get_payment_methods(checkout_id, access_token):
+    response = requests.get(
+        f"{SUMUP_BASE_URL}/checkouts/{checkout_id}/payment-methods",
+        headers=_auth_header(access_token),
+    )
+    _handle_response_status(response)
+
+    response_body = response.json()
+    return response_body
 
 def get_checkout(checkout_id, access_token):
     response = requests.get(
@@ -94,6 +132,16 @@ def cancel_checkout(checkout_id, access_token):
     )
     _handle_response_status(response)
 
+def process_ideal_checkout(checkout_id, access_token):
+    response = requests.put(
+        f"{SUMUP_BASE_URL}/checkouts/{checkout_id}",
+        json={"payment_type": "ideal"},
+        headers=_auth_header(access_token),
+    )
+    _handle_response_status(response)
+
+    response_body = response.json()
+    return response_body["next_step"]["full"]
 
 def get_transaction(transaction_id, access_token):
     response = requests.get(

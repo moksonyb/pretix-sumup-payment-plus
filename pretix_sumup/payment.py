@@ -98,7 +98,19 @@ class SumUp(BasePaymentProvider):
                     "plugins:pretix_sumup:checkout_event",
                     kwargs={"payment": payment.pk},
                 ),
+                redirect_url=build_absolute_uri(
+                    event,
+                    "presale:event.order",
+                    kwargs={
+                        "order": order.code,
+                        "secret": order.secret,
+                    },
+                ),
                 access_token=self.settings.get("access_token"),
+                first_name=order.customer,
+                last_name=order.customer,
+                email=order.email,
+                country=order.locale,
             )
 
             info_data = payment.info_data
@@ -110,6 +122,30 @@ class SumUp(BasePaymentProvider):
             payment.fail(info=internal_exception_message)
             logger.exception(internal_exception_message)
             raise PaymentException(_("Error while creating SumUp checkout"))
+
+    def execute_ideal_payment(self, payment: OrderPayment):
+        payment_id = payment.local_id
+        order = payment.order
+        event = order.event
+
+        has_valid_checkout = self._synchronize_payment_status(payment)
+        if has_valid_checkout:
+            checkout_id = payment.info_data.get("sumup_checkout_id")
+
+            try:
+                redirect_url = sumup_client.process_ideal_checkout(
+                    checkout_id = checkout_id,
+                    access_token = self.settings.get("access_token")
+                )
+                return redirect_url
+            except Exception as err:
+                internal_exception_message = f"Error while processing SumUp iDEAL checkout: {err}"
+                logger.exception(internal_exception_message)
+                raise PaymentException(_("Error while processing SumUp iDEAL checkout"))
+        else:
+            raise PaymentException(_("No SumUp checkout ID found."))
+        
+
 
     def checkout_confirm_render(self, request: HttpRequest, **kwargs):
         return _(
